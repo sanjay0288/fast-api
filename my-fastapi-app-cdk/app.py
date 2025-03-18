@@ -6,7 +6,9 @@ from aws_cdk import (
     aws_ecs as ecs,
     aws_ecr as ecr,
     aws_iam as iam,
-    aws_elasticloadbalancingv2 as elb
+    aws_elasticloadbalancingv2 as elb,
+    aws_applicationautoscaling as appscaling,
+    Duration  
 )
 
 class MyEcsStack(Stack):
@@ -39,7 +41,7 @@ class MyEcsStack(Stack):
             cpu=256
         )
         
-                # Define the port mappings
+        # Define the port mappings
         container.add_port_mappings(
             ecs.PortMapping(container_port=8000)  # Exposing port 8000
         )
@@ -71,6 +73,20 @@ class MyEcsStack(Stack):
 
         # Register the ECS service with the load balancer
         target_group.add_target(ecs_service)
+        
+        # Enable auto-scaling for the ECS service
+        scaling = ecs_service.auto_scale_task_count(
+            min_capacity=1,  # Minimum number of tasks 
+            max_capacity=10  # Maximum number of tasks
+        )
+
+        # Add a scaling policy based on CPU utilization
+        scaling.scale_on_cpu_utilization(
+            "CpuScalingPolicy",  
+            target_utilization_percent=70,  # Target CPU utilization
+            scale_in_cooldown=Duration.seconds(60),  # Wait time before scaling in
+            scale_out_cooldown=Duration.seconds(60)  # Wait time before scaling out
+        )
 
         # Output the load balancer URL
         CfnOutput(self, "LoadBalancerURL", value=lb.load_balancer_dns_name)
